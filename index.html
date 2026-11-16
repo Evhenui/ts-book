@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TypeScript для фронтендера</title>
+<style>
+:root{--ink:#222;--bg:#fff;--navy:#1a1a2e;--blue:#0f3460;--code:#1a1a2e;--card:#f4f6fb}
+@media (prefers-color-scheme:dark){:root{--ink:#e6e6ee;--bg:#14141f;--navy:#a0d8ef;--blue:#7fb2ff;--code:#0b0b14;--card:#1f2033}}
+body{font-family:Georgia,serif;line-height:1.6;color:var(--ink);background:var(--bg);max-width:820px;margin:0 auto;padding:1.5rem}
+h1{color:var(--navy);border-bottom:3px solid var(--blue);padding-bottom:.3em}
+h2{color:var(--blue);margin-top:1.6em}
+code{font-family:'Courier New',monospace;background:var(--card);padding:1px 5px;border-radius:3px;font-size:.92em}
+pre{background:var(--code);color:#e8e8e8;padding:12px 14px;border-radius:6px;overflow-x:auto;line-height:1.4}
+pre code{background:none;padding:0;color:inherit}
+.cover{background:#1a1a2e;color:#fff;text-align:center;padding:4rem 1rem;border-radius:8px;margin-bottom:2rem}
+.cover h1{color:#fff;border:none;font-size:2.4rem;margin:0}
+.cover p{color:#a0d8ef;font-style:italic}
+.key,.warn,.quiz,.task{padding:.8em 1em;margin:1em 0;border-radius:4px;background:var(--card)}
+.key{border-left:4px solid #2196f3}.warn{border-left:4px solid #ff9800}
+.quiz{border-left:4px solid #9c27b0}.task{border-left:4px solid #4caf50}
+details{margin:.4em 0}summary{cursor:pointer;color:var(--blue)}
+.chapter{border-top:1px solid #8884;margin-top:2.5rem;padding-top:1rem}
+.soon{opacity:.55}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>TypeScript<br>для фронтендера</h1>
+  <p>Від "пишу типи, бо треба" до "розумію, що роблю"</p>
+</div>
+
+<h1>Зміст</h1>
+<ol>
+  <li>Основи типів</li>
+  <li>Обʼєкти: interface і type</li>
+  <li>Функції</li>
+  <li>Union і narrowing</li>
+  <li>Generics</li>
+  <li>Utility types</li>
+  <li class="soon">keyof, typeof, mapped і conditional types</li>
+  <li class="soon">Класи</li>
+  <li class="soon">tsconfig і модулі</li>
+  <li class="soon">Реальна практика: async, API, помилки, Vue/React</li>
+</ol>
+
+<div class="key"><strong>Як читати:</strong> кожен розділ має теорію, 3 контрольні питання і 2 задачки. Відповіді сховані під <em>"Показати"</em> — спочатку подумай сам, потім відкривай. Задачки зручно робити на <code>typescriptlang.org/play</code>, нічого встановлювати не треба.</div>
+
+<div class="chapter">
+<h1>1. Основи типів</h1>
+
+<p><strong>TypeScript = JavaScript + перевірка типів до запуску.</strong> Після компіляції типи зникають, у браузері лишається звичайний JS. Тип — це як <code>props</code> з валідацією в Vue: каже, що саме сюди можна передати.</p>
+
+<h2>Анотації та inference</h2>
+<pre><code>let age: number = 30;      // явно
+let name = "Євген";        // TS сам зрозумів: string
+age = "тридцять";          // ❌ помилка ще в редакторі</code></pre>
+<div class="key">Правило: коли TS сам бачить тип (як у <code>name</code>), анотацію не пиши. Пиши її там, де TS не здогадається: параметри функцій, порожні масиви, дані ззовні.</div>
+
+<h2>Основні типи</h2>
+<pre><code>let ok: boolean = true;
+let nothing: null = null;
+let list: number[] = [1, 2, 3];          // те саме що Array&lt;number&gt;
+let pair: [string, number] = ["age", 30]; // кортеж: рівно 2 елементи, у цьому порядку</code></pre>
+
+<h2>any, unknown, never</h2>
+<pre><code>let a: any = "hi";       // "вимкни перевірку". Небезпечно!
+a.foo.bar();             // TS мовчить, а в браузері впаде
+
+let u: unknown = "hi";   // "не знаю що це, спочатку перевір"
+u.toUpperCase();         // ❌ не можна одразу
+if (typeof u === "string") u.toUpperCase();  // ✅ після перевірки можна
+
+function fail(msg: string): never { throw new Error(msg); } // ніколи не повертається</code></pre>
+<div class="warn"><code>any</code> заражає код: де зʼявився, там TS більше не допомагає. Не знаєш тип? Бери <code>unknown</code>.</div>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Що станеться з типами після компіляції?
+<details><summary>Показати</summary>Зникнуть. У браузер іде чистий JS, а типи існують тільки під час написання коду.</details></li>
+<li>Чим <code>unknown</code> безпечніший за <code>any</code>?
+<details><summary>Показати</summary>З <code>unknown</code> нічого не можна робити, поки не перевіриш тип. З <code>any</code> можна все, навіть те, що впаде.</details></li>
+<li>Коли тип можна не писати?
+<details><summary>Показати</summary>Коли TS бачить його сам зі значення (<code>let n = 5</code>). Пишемо там, де значення ще немає або воно приходить ззовні.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Опиши змінну <code>coords</code>: кортеж з двох чисел (широта, довгота).
+<details><summary>Підказка</summary><code>let coords: [number, number] = [46.48, 30.72];</code></details></li>
+<li>Функція <code>parse(data: unknown)</code> має повернути довжину, якщо <code>data</code> рядок, і <code>0</code> в інших випадках.
+<details><summary>Підказка</summary><code>return typeof data === "string" ? data.length : 0;</code></details></li>
+</ol></div>
+</div>
+
+<div class="chapter">
+<h1>2. Обʼєкти: interface і type</h1>
+
+<p>Обʼєкт у TS описується формою: які поля і якого типу. Це як опис <code>props</code> компонента.</p>
+
+<pre><code>interface User {
+  id: number;
+  name: string;
+  email?: string;        // ? = поле необовʼязкове
+  readonly createdAt: Date; // readonly = після створення не змінюй
+}
+
+const u: User = { id: 1, name: "Євген", createdAt: new Date() };
+u.createdAt = new Date(); // ❌ readonly
+u.email.length;           // ❌ email може бути undefined</code></pre>
+
+<h2>interface чи type?</h2>
+<pre><code>type Id = string | number;       // type вміє й не-обʼєкти (union, кортежі)
+interface Admin extends User {   // interface зручно розширювати
+  role: "admin";
+}</code></pre>
+<div class="key">Для обʼєктів практично однаково. Проста порада: <code>interface</code> для форми обʼєкта, <code>type</code> для всього іншого (union, кортежі, складні типи). Головне, щоб у команді було одне правило.</div>
+
+<h2>Словник довільних ключів</h2>
+<pre><code>const prices: Record&lt;string, number&gt; = { apple: 10, pear: 15 };
+// те саме: { [key: string]: number }</code></pre>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Що означає <code>?</code> після імені поля?
+<details><summary>Показати</summary>Поле необовʼязкове: його тип стає <code>T | undefined</code>, тому перед використанням TS вимагає перевірку.</details></li>
+<li>Для чого <code>readonly</code>?
+<details><summary>Показати</summary>Забороняє перезаписувати поле після створення. Перевірка тільки на етапі написання коду.</details></li>
+<li>Яка головна різниця між <code>interface</code> і <code>type</code>?
+<details><summary>Показати</summary><code>type</code> може описати не лише обʼєкти (union, кортежі). <code>interface</code> зручно розширюється через <code>extends</code>. Для обʼєктів різниця мінімальна.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Опиши <code>Product</code>: <code>id</code> (число), <code>title</code> (рядок), <code>price</code> (число), <code>description</code> (необовʼязково).
+<details><summary>Підказка</summary><code>interface Product { id: number; title: string; price: number; description?: string }</code></details></li>
+<li>Зроби <code>Cart</code>, де ключ це <code>id</code> товару (рядок), а значення це кількість (число).
+<details><summary>Підказка</summary><code>type Cart = Record&lt;string, number&gt;;</code></details></li>
+</ol></div>
+</div>
+
+<div class="chapter">
+<h1>3. Функції</h1>
+
+<p>У функції TS типізує <strong>вхід</strong> (параметри) і <strong>вихід</strong> (що повертає).</p>
+
+<pre><code>function add(a: number, b: number): number {
+  return a + b;
+}
+
+const greet = (name: string, title?: string): string =>
+  title ? `${title} ${name}` : name;
+
+function log(msg: string, level = "info"): void {  // void = нічого не повертає
+  console.log(level, msg);
+}</code></pre>
+<div class="key">Тип повернення часто можна не писати, TS виведе сам. Але для публічних функцій корисно писати його явно: випадково змінити "контракт" буде важче.</div>
+
+<h2>Функція як тип (колбеки)</h2>
+<pre><code>type Handler = (value: string) => void;   // як @input або emit у Vue
+
+function onChange(cb: Handler) { cb("hello"); }
+onChange((v) => console.log(v.toUpperCase())); // v автоматично string</code></pre>
+
+<h2>Перевантаження (overloads)</h2>
+<pre><code>function format(x: string): string;
+function format(x: number): string;
+function format(x: string | number): string { return String(x); }</code></pre>
+<div class="warn">Перевантаження потрібні рідко. Часто простіше написати union (<code>string | number</code>), як у прикладі вище.</div>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Що означає <code>void</code>?
+<details><summary>Показати</summary>Функція нічого корисного не повертає (як обробник кліку).</details></li>
+<li>Чому в <code>onChange((v) => ...)</code> не треба писати тип <code>v</code>?
+<details><summary>Показати</summary>TS бере його з типу <code>Handler</code>. Це contextual typing: тип параметра береться з місця, куди передають функцію.</details></li>
+<li>Чим <code>title?: string</code> відрізняється від <code>level = "info"</code>?
+<details><summary>Показати</summary>Обидва необовʼязкові. Але <code>title</code> може бути <code>undefined</code> всередині, а <code>level</code> має значення за замовчуванням, тож завжди рядок.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Напиши тип <code>Predicate</code>: функція, що приймає число і повертає boolean. Потім зроби <code>isEven</code> цього типу.
+<details><summary>Підказка</summary><code>type Predicate = (n: number) => boolean; const isEven: Predicate = (n) => n % 2 === 0;</code></details></li>
+<li>Типізуй <code>function filterBy(items, fn)</code>: <code>items</code> це масив чисел, <code>fn</code> це <code>Predicate</code>, результат це масив чисел.
+<details><summary>Підказка</summary><code>function filterBy(items: number[], fn: Predicate): number[] { return items.filter(fn); }</code></details></li>
+</ol></div>
+</div>
+
+<div class="chapter">
+<h1>4. Union і narrowing</h1>
+
+<p><strong>Union</strong> це "або те, або те". <strong>Narrowing</strong> це коли TS після твоєї перевірки розуміє, який саме варіант зараз перед ним.</p>
+
+<pre><code>type Status = "loading" | "success" | "error"; // тільки ці 3 рядки, як enum
+
+function show(id: string | number) {
+  if (typeof id === "string") id.toUpperCase(); // тут TS знає: string
+  else id.toFixed(2);                           // а тут: number
+}</code></pre>
+
+<h2>Discriminated union: найкорисніший патерн</h2>
+<p>Це стан запиту, який ти пишеш у кожному Vue/React-компоненті. Кожен варіант має спільне поле-мітку (<code>status</code>).</p>
+<pre><code>type Result =
+  | { status: "success"; data: string[] }
+  | { status: "error"; message: string };
+
+function render(r: Result) {
+  if (r.status === "success") return r.data.length; // є data
+  return r.message;                                 // тут лише error
+}</code></pre>
+<div class="key">Чим ще можна звузити: <code>typeof x</code>, <code>x === "a"</code>, <code>"key" in obj</code>, <code>x instanceof Date</code>, проста перевірка <code>if (x)</code>.</div>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Що таке narrowing?
+<details><summary>Показати</summary>TS звужує широкий тип (<code>string | number</code>) до конкретного всередині перевірки.</details></li>
+<li>Навіщо в discriminated union спільне поле <code>status</code>?
+<details><summary>Показати</summary>За ним TS розрізняє варіанти. Перевірив <code>status === "error"</code>, і TS дозволяє брати <code>message</code>, але не <code>data</code>.</details></li>
+<li>Чим літеральний тип <code>"a" | "b"</code> кращий за просто <code>string</code>?
+<details><summary>Показати</summary>Редактор підкаже допустимі значення, а друкарську помилку (<code>"sucess"</code>) TS зловить одразу.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Опиши <code>Shape</code>: коло (<code>kind: "circle"</code>, <code>radius</code>) або квадрат (<code>kind: "square"</code>, <code>side</code>). Напиши <code>area(s: Shape)</code>.
+<details><summary>Підказка</summary><code>if (s.kind === "circle") return Math.PI * s.radius ** 2; return s.side ** 2;</code></details></li>
+<li>Функція <code>len(x: string | string[])</code> повертає довжину рядка або кількість елементів.
+<details><summary>Підказка</summary>І в рядка, і в масиву є <code>.length</code>, тож перевірка тут не потрібна. А якщо хочеш різну логіку, використай <code>Array.isArray(x)</code>.</details></li>
+</ol></div>
+</div>
+
+<div class="chapter">
+<h1>5. Generics</h1>
+
+<p><strong>Generic</strong> це тип із "параметром". Як функція приймає значення, так generic приймає тип. Ти вже бачив це: <code>Promise&lt;User&gt;</code>, <code>Array&lt;number&gt;</code>, <code>AuthRequest&lt;P&gt;</code> із бекенду, <code>ref&lt;string&gt;()</code> у Vue.</p>
+
+<pre><code>function first&lt;T&gt;(arr: T[]): T | undefined {
+  return arr[0];
+}
+first([1, 2, 3]);      // T = number
+first(["a", "b"]);     // T = string
+
+interface ApiResponse&lt;T&gt; {
+  data: T;
+  error?: string;
+}
+const res: ApiResponse&lt;User[]&gt; = { data: [] };</code></pre>
+
+<h2>Обмеження: extends</h2>
+<pre><code>function byId&lt;T extends { id: number }&gt;(items: T[], id: number) {
+  return items.find((i) => i.id === id); // можна, бо в T точно є id
+}</code></pre>
+<div class="key"><code>T</code> це просто змінна для типу. Названа так за традицією. Може бути й <code>Item</code>, якщо так зрозуміліше.</div>
+<div class="warn">Не роби generic там, де він не потрібен. Якщо тип використовується в функції один раз, звичайний тип простіший.</div>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Навіщо generics, якщо є <code>any</code>?
+<details><summary>Показати</summary><code>any</code> губить звʼязок між входом і виходом. Generic його зберігає: поклав <code>number[]</code>, отримав <code>number</code>.</details></li>
+<li>Що робить <code>T extends { id: number }</code>?
+<details><summary>Показати</summary>Обмежує <code>T</code>: підходять лише типи, у яких є <code>id: number</code>. Тому всередині можна безпечно читати <code>.id</code>.</details></li>
+<li>Як зрозуміти запис <code>Promise&lt;User[]&gt;</code>?
+<details><summary>Показати</summary>"Обіцянка, яка колись видасть масив користувачів". У кутових дужках лежить тип результату.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Напиши <code>last&lt;T&gt;(arr: T[])</code>, що повертає останній елемент.
+<details><summary>Підказка</summary><code>function last&lt;T&gt;(arr: T[]): T | undefined { return arr[arr.length - 1]; }</code></details></li>
+<li>Опиши <code>Paginated&lt;T&gt;</code>: <code>items: T[]</code>, <code>total: number</code>, <code>page: number</code>.
+<details><summary>Підказка</summary><code>interface Paginated&lt;T&gt; { items: T[]; total: number; page: number }</code></details></li>
+</ol></div>
+</div>
+
+<div class="chapter">
+<h1>6. Utility types</h1>
+
+<p>Готові "перетворювачі" типів у самому TS. Беруть твій тип і роблять з нього новий, щоб не переписувати його вручну.</p>
+
+<pre><code>interface User { id: number; name: string; email: string; password: string }
+
+type UserUpdate = Partial&lt;User&gt;;              // усі поля стають необовʼязковими
+type UserCard   = Pick&lt;User, "id" | "name"&gt;;   // лише ці поля
+type PublicUser = Omit&lt;User, "password"&gt;;      // усе, крім password
+type Frozen     = Readonly&lt;User&gt;;              // усі поля readonly
+type Roles      = Record&lt;"admin" | "user", string[]&gt;;
+type Out        = ReturnType&lt;typeof fetchUser&gt;; // що повертає функція</code></pre>
+
+<table style="border-collapse:collapse;width:100%">
+<tr><th align="left">Utility</th><th align="left">Де знадобиться</th></tr>
+<tr><td><code>Partial</code></td><td>форма редагування, PATCH-запит</td></tr>
+<tr><td><code>Omit</code></td><td>відповідь API без пароля (як у бекенді)</td></tr>
+<tr><td><code>Pick</code></td><td>картка в списку з кількома полями</td></tr>
+<tr><td><code>Record</code></td><td>словники, довідники</td></tr>
+</table>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Навіщо <code>Omit&lt;User, "password"&gt;</code>, якщо можна описати новий тип?
+<details><summary>Показати</summary>Новий тип треба підтримувати окремо: додав поле в <code>User</code>, а там забув. <code>Omit</code> оновлюється сам.</details></li>
+<li>Чим <code>Pick</code> відрізняється від <code>Omit</code>?
+<details><summary>Показати</summary><code>Pick</code> каже "залиш тільки ці поля", <code>Omit</code> каже "прибери ці".</details></li>
+<li>Який utility зручний для PATCH?
+<details><summary>Показати</summary><code>Partial</code>: клієнт може надіслати лише змінені поля.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Для <code>Product</code> з розділу 2 зроби <code>NewProduct</code> без <code>id</code> (його видає база).
+<details><summary>Підказка</summary><code>type NewProduct = Omit&lt;Product, "id"&gt;;</code></details></li>
+<li>Зроби <code>ProductPatch</code>, де всі поля необовʼязкові, крім <code>id</code>.
+<details><summary>Підказка</summary><code>type ProductPatch = Partial&lt;Omit&lt;Product, "id"&gt;&gt; &amp; Pick&lt;Product, "id"&gt;;</code> Символ <code>&amp;</code> зʼєднує два типи в один.</details></li>
+</ol></div>
+</div>
+
+<p style="text-align:center;margin-top:3rem;opacity:.6"><em>Далі: Розділ 7. keyof, typeof, mapped і conditional types</em></p>
+
+</body>
+</html>
