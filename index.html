@@ -39,10 +39,10 @@ details{margin:.4em 0}summary{cursor:pointer;color:var(--blue)}
   <li>Union і narrowing</li>
   <li>Generics</li>
   <li>Utility types</li>
-  <li class="soon">keyof, typeof, mapped і conditional types</li>
-  <li class="soon">Класи</li>
-  <li class="soon">tsconfig і модулі</li>
-  <li class="soon">Реальна практика: async, API, помилки, Vue/React</li>
+  <li>keyof, typeof, mapped і conditional types</li>
+  <li>Класи</li>
+  <li>tsconfig і модулі</li>
+  <li>Реальна практика: async, API, помилки, Vue/React</li>
 </ol>
 
 <div class="key"><strong>Як читати:</strong> кожен розділ має теорію, 3 контрольні питання і 2 задачки. Відповіді сховані під <em>"Показати"</em> — спочатку подумай сам, потім відкривай. Задачки зручно робити на <code>typescriptlang.org/play</code>, нічого встановлювати не треба.</div>
@@ -315,7 +315,247 @@ type Out        = ReturnType&lt;typeof fetchUser&gt;; // що повертає �
 </ol></div>
 </div>
 
-<p style="text-align:center;margin-top:3rem;opacity:.6"><em>Далі: Розділ 7. keyof, typeof, mapped і conditional types</em></p>
+<div class="chapter">
+<h1>7. keyof, typeof, mapped і conditional types</h1>
+
+<p>Тут типи починають <strong>створюватись із інших типів і зі значень</strong>. Це звучить складно, але кожен інструмент простий, якщо порівняти його зі звичайним JS.</p>
+
+<h2>typeof і keyof</h2>
+<pre><code>const config = { host: "localhost", port: 3000 };
+
+type Config = typeof config;   // { host: string; port: number }, тип зі значення
+type Key    = keyof Config;    // "host" | "port", список ключів
+type Port   = Config["port"];  // number, тип одного поля</code></pre>
+<div class="key"><code>typeof</code> у типах каже "візьми тип цього значення". Не плутай із <code>typeof x === "string"</code> у звичайному коді, це інша річ.</div>
+
+<h2>Безпечне читання поля</h2>
+<pre><code>function get&lt;T, K extends keyof T&gt;(obj: T, key: K): T[K] {
+  return obj[key];
+}
+get(config, "port");  // number
+get(config, "prot");  // ❌ такого ключа нема</code></pre>
+<p>Тут <code>K</code> може бути лише ключем із <code>T</code>, а результат <code>T[K]</code> це точний тип саме цього поля.</p>
+
+<h2>as const: заморозити значення</h2>
+<pre><code>const roles = ["admin", "user", "guest"] as const;
+type Role = typeof roles[number];  // "admin" | "user" | "guest"</code></pre>
+<p>Без <code>as const</code> тип був би просто <code>string[]</code>. З ним TS запамʼятовує точні значення, і один список працює і в коді, і в типі.</p>
+
+<h2>Mapped types: цикл для типів</h2>
+<pre><code>type Flags&lt;T&gt; = { [K in keyof T]: boolean };
+// для { a: string; b: number } вийде { a: boolean; b: boolean }</code></pre>
+<p>Читається як <code>for (const k in obj)</code>: "для кожного ключа K зроби поле типу boolean". Так якраз зроблені <code>Partial</code> і <code>Readonly</code> з розділу 6.</p>
+
+<h2>Conditional types: if для типів</h2>
+<pre><code>type IsString&lt;T&gt; = T extends string ? "так" : "ні";
+type A = IsString&lt;"hi"&gt;;  // "так"
+type B = IsString&lt;42&gt;;    // "ні"
+
+type ElementOf&lt;T&gt; = T extends (infer U)[] ? U : T;
+type C = ElementOf&lt;number[]&gt;;  // number</code></pre>
+<p><code>infer U</code> означає "витягни цей шматок і назви його U". Так працює і <code>ReturnType</code>.</p>
+<div class="warn">Це "верхній поверх" TypeScript. У щоденній роботі вистачає <code>typeof</code>, <code>keyof</code> і <code>as const</code>. Mapped і conditional типи читай спокійно, а писати почнеш, коли реально знадобиться.</div>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Що дає <code>keyof User</code>?
+<details><summary>Показати</summary>Union із назв усіх полів: <code>"id" | "name" | ...</code>. Це список ключів, а не значень.</details></li>
+<li>Навіщо <code>as const</code>?
+<details><summary>Показати</summary>Щоб TS не розширював значення до <code>string</code>, а запамʼятав точні. Тоді з масиву можна зробити union типів.</details></li>
+<li>З чим із JS порівняти mapped type?
+<details><summary>Показати</summary>З циклом <code>for...in</code> по ключах, тільки результатом буде новий тип.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Є <code>const sizes = ["S", "M", "L"] as const</code>. Зроби тип <code>Size</code>.
+<details><summary>Підказка</summary><code>type Size = typeof sizes[number];</code></details></li>
+<li>Зроби <code>Nullable&lt;T&gt;</code>: кожне поле може бути ще й <code>null</code>.
+<details><summary>Підказка</summary><code>type Nullable&lt;T&gt; = { [K in keyof T]: T[K] | null };</code></details></li>
+</ol></div>
+</div>
+
+<div class="chapter">
+<h1>8. Класи</h1>
+
+<p>Клас це шаблон для створення обʼєктів із полями і методами. TS додає до класів <strong>рівні доступу</strong> і зручні скорочення. Ти вже використовував клас у бекенді: <code>AppError extends Error</code>.</p>
+
+<pre><code>class Counter {
+  private count = 0;                         // ззовні недоступне
+  constructor(public readonly name: string) {} // скорочення: поле + параметр разом
+
+  inc(): number { return ++this.count; }
+}
+
+const c = new Counter("clicks");
+c.inc();     // 1
+c.count;     // ❌ private
+c.name;      // ✅ public</code></pre>
+
+<table style="border-collapse:collapse;width:100%">
+<tr><th align="left">Модифікатор</th><th align="left">Хто бачить</th></tr>
+<tr><td><code>public</code> (за замовчуванням)</td><td>усі</td></tr>
+<tr><td><code>protected</code></td><td>клас і його нащадки</td></tr>
+<tr><td><code>private</code></td><td>тільки сам клас</td></tr>
+</table>
+<div class="warn"><code>private</code> у TS працює лише на етапі перевірки типів. У готовому JS поле все одно можна прочитати. Для справжньої приватності є <code>#count</code> з чистого JS.</div>
+
+<h2>implements: клас дає обіцянку</h2>
+<pre><code>interface Logger { log(msg: string): void }
+
+class ConsoleLogger implements Logger {
+  log(msg: string) { console.log(msg); }
+}</code></pre>
+<p><code>implements</code> змушує клас мати все, що описано в interface. Забув метод, і TS одразу скаже. Зручно, коли треба легко підмінити реалізацію (наприклад, у тестах).</p>
+
+<h2>abstract: шаблон, який не створюють напряму</h2>
+<pre><code>abstract class Shape {
+  abstract area(): number;                       // нащадок мусить написати сам
+  describe() { return `Площа: ${this.area()}`; } // готовий спільний метод
+}
+class Square extends Shape {
+  constructor(private side: number) { super(); }
+  area() { return this.side ** 2; }
+}
+new Shape();  // ❌ абстрактний клас не створюють</code></pre>
+
+<h2>Те, що ти вже знаєш</h2>
+<pre><code>class AppError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);   // спершу батьківський конструктор
+  }
+}</code></pre>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Що робить запис <code>constructor(public name: string) {}</code>?
+<details><summary>Показати</summary>Одразу оголошує поле <code>name</code> і записує в нього значення параметра. Окремо описувати поле не треба.</details></li>
+<li>Чим <code>implements</code> відрізняється від <code>extends</code>?
+<details><summary>Показати</summary><code>extends</code> бере готовий код від батька. <code>implements</code> лише вимагає, щоб клас мав усе з interface, а код пишеш сам.</details></li>
+<li>Чи справді <code>private</code> ховає поле?
+<details><summary>Показати</summary>Лише для TS. У виконаному JS поле доступне. Справжнє приховування це <code>#поле</code>.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Зроби клас <code>Wallet</code> з <code>private balance</code>, методами <code>add(n)</code> і <code>get()</code>.
+<details><summary>Підказка</summary><code>class Wallet { private balance = 0; add(n: number) { this.balance += n; } get() { return this.balance; } }</code></details></li>
+<li>Опиши <code>interface Storage { save(key: string, v: string): void }</code> і клас <code>MemoryStorage</code>, що його реалізує (збережи в <code>Map</code>).
+<details><summary>Підказка</summary><code>class MemoryStorage implements Storage { private data = new Map&lt;string, string&gt;(); save(key: string, v: string) { this.data.set(key, v); } }</code></details></li>
+</ol></div>
+</div>
+
+<div class="chapter">
+<h1>9. tsconfig і модулі</h1>
+
+<p><code>tsconfig.json</code> це налаштування TypeScript: наскільки суворо перевіряти код, у який JS компілювати і де лежать файли.</p>
+
+<pre><code>{
+  "compilerOptions": {
+    "target": "ES2022",        // який JS видати
+    "module": "NodeNext",      // як зʼєднувати файли (Node 20)
+    "strict": true,            // головний перемикач суворості
+    "outDir": "dist",          // куди класти готовий JS
+    "skipLibCheck": true       // не перевіряти чужі .d.ts, швидше
+  },
+  "include": ["src"]
+}</code></pre>
+
+<h2>strict: завжди вмикай</h2>
+<p><code>"strict": true</code> це набір перевірок. Дві головні: <code>noImplicitAny</code> (не можна мовчки лишити <code>any</code>) і <code>strictNullChecks</code> (<code>null</code> і <code>undefined</code> не підходять усюди, тому "cannot read property of undefined" ловиться ще в редакторі).</p>
+<div class="key">У новому проєкті <code>strict</code> вмикай з першого дня. Увімкнути його пізніше в старому коді означає сотні помилок.</div>
+
+<h2>Імпорти і експорти</h2>
+<pre><code>import type { User } from "./types.js"; // лише тип, зникне після компіляції
+import { prisma } from "../lib/prisma.js";</code></pre>
+<p>Чому <code>.js</code> у шляхах? З <code>module: NodeNext</code> Node вимагає розширення, а TS розуміє, що за <code>.js</code> лежить твій <code>.ts</code>. Це ті самі імпорти з бекенду.</p>
+
+<h2>Типи для бібліотек: .d.ts</h2>
+<p>Звичайні JS-пакети не мають типів. Їх дають окремо у пакетах <code>@types/...</code>. Саме тому ми ставили <code>@types/bcrypt</code> і <code>@types/jsonwebtoken</code>. Файл <code>.d.ts</code> містить лише опис типів, без коду.</p>
+<pre><code>// global.d.ts, щоб імпортувати картинки
+declare module "*.svg" {
+  const url: string;
+  export default url;
+}</code></pre>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Що змінює <code>"strict": true</code>?
+<details><summary>Показати</summary>Вмикає суворі перевірки, зокрема заборону неявного <code>any</code> і контроль <code>null</code>/<code>undefined</code>.</details></li>
+<li>Навіщо ставити <code>@types/bcrypt</code>?
+<details><summary>Показати</summary>Сам <code>bcrypt</code> написаний на JS без типів. Пакет <code>@types</code> дає TS опис його функцій.</details></li>
+<li>Для чого <code>import type</code>?
+<details><summary>Показати</summary>Каже, що імпортуєш лише тип. Такий імпорт повністю зникає з готового JS.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Відкрий <code>tsconfig.json</code> свого бекенд-проєкту і знайди там <code>strict</code>, <code>module</code>, <code>outDir</code>. Поясни собі кожен рядок.
+<details><summary>Підказка</summary>Якщо рядка <code>strict</code> нема, додай <code>"strict": true</code> і подивись, які помилки зʼявилися.</details></li>
+<li>Опиши модуль для <code>*.css</code>, щоб <code>import "./a.css"</code> не давав помилку.
+<details><summary>Підказка</summary><code>declare module "*.css";</code></details></li>
+</ol></div>
+</div>
+
+<div class="chapter">
+<h1>10. Реальна практика: async, API, помилки, Vue/React</h1>
+
+<p>Тут зводимо все разом: типи для запитів до сервера, обробка помилок і компоненти.</p>
+
+<h2>Async і Promise</h2>
+<pre><code>async function getUser(id: number): Promise&lt;User&gt; {
+  const res = await fetch(`/api/users/${id}`);
+  if (!res.ok) throw new Error("Не вдалося завантажити");
+  return (await res.json()) as User;
+}</code></pre>
+<div class="warn"><code>res.json()</code> повертає <code>any</code>. Запис <code>as User</code> це лише твоя обіцянка TS, а перевірки немає. Якщо сервер надішле інше, код зламається вже в роботі.</div>
+
+<h2>Справжня перевірка даних: Zod</h2>
+<pre><code>import { z } from "zod";
+
+const UserSchema = z.object({ id: z.number(), name: z.string() });
+type User = z.infer&lt;typeof UserSchema&gt;;  // тип береться зі схеми
+
+const user = UserSchema.parse(await res.json()); // перевірить і кине помилку</code></pre>
+<p>Одна схема дає і перевірку на льоту, і тип. Так ти вже робив у бекенді.</p>
+
+<h2>Помилки в catch</h2>
+<pre><code>try {
+  await getUser(1);
+} catch (e) {            // e має тип unknown, кинути можна що завгодно
+  if (e instanceof Error) console.log(e.message);
+}</code></pre>
+
+<h2>Vue і React</h2>
+<pre><code>// Vue 3
+const props = defineProps&lt;{ title: string; count?: number }&gt;();
+const items = ref&lt;string[]&gt;([]);
+
+// React
+const [user, setUser] = useState&lt;User | null&gt;(null);
+function Button({ label }: { label: string }) { return &lt;button&gt;{label}&lt;/button&gt;; }</code></pre>
+<p>Порожній стан (<code>[]</code> або <code>null</code>) завжди треба типізувати явно, бо TS не здогадається, що там зʼявиться пізніше.</p>
+
+<div class="quiz"><h2>Питання</h2>
+<ol>
+<li>Чому <code>as User</code> після <code>res.json()</code> небезпечний?
+<details><summary>Показати</summary>Це не перевірка, а обіцянка. Якщо сервер надішле інакше, TS не помітить, і помилка вилізе в роботі.</details></li>
+<li>Який тип має <code>e</code> у <code>catch</code>?
+<details><summary>Показати</summary><code>unknown</code>. Тому перед використанням перевіряють, наприклад, <code>e instanceof Error</code>.</details></li>
+<li>Навіщо <code>ref&lt;string[]&gt;([])</code>, а не просто <code>ref([])</code>?
+<details><summary>Показати</summary>З порожнього масиву TS не знає тип елементів. Явна анотація каже, що там будуть рядки.</details></li>
+</ol></div>
+
+<div class="task"><h2>Задачки</h2>
+<ol>
+<li>Напиши <code>fetchTodos(): Promise&lt;Todo[]&gt;</code> із перевіркою <code>res.ok</code>. Опиши <code>Todo</code> сам.
+<details><summary>Підказка</summary>Скористайся шаблоном із <code>getUser</code>, тільки поверни масив.</details></li>
+<li>Типізуй props компонента <code>Card</code>: <code>title</code> (рядок), <code>tags</code> (масив рядків), <code>onOpen</code> (функція без параметрів).
+<details><summary>Підказка</summary><code>{ title: string; tags: string[]; onOpen: () =&gt; void }</code></details></li>
+</ol></div>
+</div>
+
+<div class="key" style="margin-top:3rem"><strong>Кінець книги.</strong> Тепер найкраща практика: візьми свій бекенд-проєкт або один зі своїх фронтенд-проєктів, увімкни <code>"strict": true</code> і виправ усі помилки. Це швидше за все закріпить усе з цієї книги.</div>
 
 </body>
 </html>
